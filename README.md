@@ -38,7 +38,7 @@ Update these variables in the script to match your desired configuration.
 3. Run the script:
 
     ```bash
-    python JUCE_CMAKE_project_creator.py
+    python3 JUCE_CMAKE_project_creator.py
     ```
 
 4. The script will:
@@ -65,7 +65,7 @@ PLUGIN_CODE = "Dem0"
 
 **Command:**
 ```bash
-python3 create_juce_project.py
+python3 JUCE_CMAKE_project_creator.py
 ```
 
 **Result:**
