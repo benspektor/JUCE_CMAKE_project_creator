@@ -65,7 +65,7 @@ PLUGIN_CODE = "Dem0"
 
 **Command:**
 ```bash
-python create_juce_project.py
+python3 create_juce_project.py
 ```
 
 **Result:**
