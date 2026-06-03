@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ניהול עסק שוקולד{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f4f0; font-family: 'Segoe UI', Arial, sans-serif; }
+        .navbar { background: linear-gradient(135deg, #2c1003, #7b3f00) !important; }
+        .navbar-brand { font-size: 1.3rem; font-weight: bold; letter-spacing: 0.5px; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .stat-card { border-right: 5px solid; }
+        .stat-card.revenue { border-color: #28a745; }
+        .stat-card.expense { border-color: #dc3545; }
+        .stat-card.profit { border-color: #0d6efd; }
+        .stat-card.orders-count { border-color: #fd7e14; }
+        .low-stock td { color: #dc3545; font-weight: 600; }
+        .badge-חדש { background-color: #0dcaf0 !important; color: #000 !important; }
+        .badge-בייצור { background-color: #ffc107 !important; color: #000 !important; }
+        .badge-מוכן { background-color: #198754 !important; }
+        .badge-נשלח { background-color: #0d6efd !important; }
+        .badge-סגור { background-color: #6c757d !important; }
+        .badge-בוטל { background-color: #dc3545 !important; }
+        .nav-link { border-radius: 6px; margin: 0 2px; }
+        .nav-link:hover { background: rgba(255,255,255,0.15); }
+        .nav-link.active { background: rgba(255,255,255,0.25) !important; }
+        .page-header { border-bottom: 2px solid #e9ecef; padding-bottom: 0.75rem; margin-bottom: 1.5rem; }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-dark navbar-expand-lg mb-4">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">🍫 שוקולד מיוחד</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navMenu">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="/">
+                        <i class="bi bi-speedometer2"></i> לוח בקרה
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'products' %}active{% endif %}" href="/products">
+                        <i class="bi bi-box-seam"></i> מוצרים
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'inventory' %}active{% endif %}" href="/inventory">
+                        <i class="bi bi-basket3"></i> מלאי
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'recipes' %}active{% endif %}" href="/recipes">
+                        <i class="bi bi-journal-text"></i> מתכונים
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'customers' %}active{% endif %}" href="/customers">
+                        <i class="bi bi-people"></i> לקוחות
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'orders' %}active{% endif %}" href="/orders">
+                        <i class="bi bi-cart3"></i> הזמנות
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'production' %}active{% endif %}" href="/production">
+                        <i class="bi bi-gear"></i> ייצור
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'finances' %}active{% endif %}" href="/finances">
+                        <i class="bi bi-cash-stack"></i> כספים
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid px-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for cat, msg in messages %}
+        <div class="alert alert-{{ 'success' if cat == 'success' else 'warning' if cat == 'warning' else 'danger' }} alert-dismissible fade show">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}כספים{% endblock %}
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2 class="mb-0"><i class="bi bi-cash-stack"></i> כספים</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
+        <i class="bi bi-plus-lg"></i> רשום הוצאה
+    </button>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-light fw-bold">החודש הנוכחי</div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">הכנסות:</span>
+                    <span class="text-success fw-bold">₪{{ "%.2f"|format(monthly_revenue) }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">הוצאות:</span>
+                    <span class="text-danger fw-bold">₪{{ "%.2f"|format(monthly_expenses) }}</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <span class="fw-semibold">רווח:</span>
+                    <span class="fw-bold fs-5 {{ 'text-success' if monthly_profit >= 0 else 'text-danger' }}">
+                        ₪{{ "%.2f"|format(monthly_profit) }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-light fw-bold">כל הזמנים</div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">הכנסות:</span>
+                    <span class="text-success fw-bold">₪{{ "%.2f"|format(total_revenue) }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">הוצאות:</span>
+                    <span class="text-danger fw-bold">₪{{ "%.2f"|format(total_expenses) }}</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <span class="fw-semibold">רווח כולל:</span>
+                    <span class="fw-bold fs-5 {{ 'text-success' if total_profit >= 0 else 'text-danger' }}">
+                        ₪{{ "%.2f"|format(total_profit) }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-light fw-bold">הוצאות לפי קטגוריה</div>
+            <div class="card-body p-0">
+                {% if expense_categories %}
+                <table class="table table-sm mb-0">
+                    {% for cat, total in expense_categories %}
+                    <tr>
+                        <td>{{ cat }}</td>
+                        <td class="text-end text-danger fw-semibold">₪{{ "%.2f"|format(total) }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% else %}
+                <p class="text-muted p-3 mb-0">אין הוצאות</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Expenses Table -->
+<div class="card">
+    <div class="card-header fw-bold">יומן הוצאות</div>
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>תאריך</th>
+                    <th>תיאור</th>
+                    <th>קטגוריה</th>
+                    <th>סכום</th>
+                    <th>הערות</th>
+                    <th class="text-center">פעולות</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for e in expenses %}
+            <tr>
+                <td>{{ e.expense_date.strftime('%d/%m/%Y') }}</td>
+                <td class="fw-semibold">{{ e.description }}</td>
+                <td><span class="badge bg-secondary">{{ e.category }}</span></td>
+                <td class="text-danger fw-bold">₪{{ "%.2f"|format(e.amount) }}</td>
+                <td>{{ e.notes or '-' }}</td>
+                <td class="text-center">
+                    <form method="post" action="/finances/delete/{{ e.id }}" class="d-inline"
+                          onsubmit="return confirm('למחוק הוצאה זו?')">
+                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted py-5">אין הוצאות רשומות.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Expense Modal -->
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" action="/finances/add" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">רישום הוצאה</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">תיאור *</label>
+                    <input type="text" name="description" class="form-control" required
+                           placeholder="לדוגמה: רכישת קקאו מיבואן X">
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">סכום (₪) *</label>
+                        <input type="number" name="amount" class="form-control" step="0.01" min="0" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">קטגוריה</label>
+                        <select name="category" class="form-select">
+                            <option value="חומרי גלם">חומרי גלם</option>
+                            <option value="ציוד">ציוד</option>
+                            <option value="אריזה">אריזה</option>
+                            <option value="שכירות">שכירות</option>
+                            <option value="שיווק">שיווק</option>
+                            <option value="משלוחים">משלוחים</option>
+                            <option value="שכר">שכר</option>
+                            <option value="אחר" selected>אחר</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">תאריך *</label>
+                    <input type="date" name="expense_date" class="form-control" required id="expenseDate">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">הערות</label>
+                    <textarea name="notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="submit" class="btn btn-primary">שמור הוצאה</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}
