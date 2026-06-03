@@ -105,6 +105,27 @@ class Expense(db.Model):
     expense_date = db.Column(db.Date, default=date.today)
     notes = db.Column(db.Text)
 
+class Purchase(db.Model):
+    __tablename__ = 'purchases'
+    id = db.Column(db.Integer, primary_key=True)
+    purchase_date = db.Column(db.Date, default=date.today, nullable=False)
+    supplier = db.Column(db.String(100))
+    invoice_number = db.Column(db.String(50))
+    category = db.Column(db.String(50), nullable=False)
+    total = db.Column(db.Float, nullable=False, default=0)
+    notes = db.Column(db.Text)
+    items = db.relationship('PurchaseItem', backref='purchase', cascade='all, delete-orphan', lazy=True)
+
+class PurchaseItem(db.Model):
+    __tablename__ = 'purchase_items'
+    id = db.Column(db.Integer, primary_key=True)
+    purchase_id = db.Column(db.Integer, db.ForeignKey('purchases.id'), nullable=False)
+    description = db.Column(db.String(200))
+    material_id = db.Column(db.Integer, db.ForeignKey('raw_materials.id'), nullable=True)
+    quantity = db.Column(db.Float, default=0)
+    unit_price = db.Column(db.Float, default=0)
+    material = db.relationship('RawMaterial')
+
 
 # ============ ROUTES ============
 
@@ -486,6 +507,91 @@ def delete_expense(id):
     db.session.commit()
     flash('הוצאה נמחקה', 'warning')
     return redirect(url_for('finances'))
+
+
+# --- Purchases ---
+
+@app.route('/purchases')
+def purchases():
+    all_purchases = Purchase.query.order_by(Purchase.purchase_date.desc()).all()
+    all_materials = RawMaterial.query.order_by(RawMaterial.name).all()
+    today = date.today()
+    month_start = today.replace(day=1)
+    monthly_total = db.session.query(func.sum(Purchase.total)).filter(
+        Purchase.purchase_date >= month_start
+    ).scalar() or 0
+    total_all = db.session.query(func.sum(Purchase.total)).scalar() or 0
+    return render_template('purchases.html',
+        purchases=all_purchases,
+        materials=all_materials,
+        monthly_total=monthly_total,
+        total_all=total_all
+    )
+
+@app.route('/purchases/add', methods=['POST'])
+def add_purchase():
+    category = request.form['category']
+    p = Purchase(
+        purchase_date=datetime.strptime(request.form['purchase_date'], '%Y-%m-%d').date(),
+        supplier=request.form.get('supplier', ''),
+        invoice_number=request.form.get('invoice_number', ''),
+        category=category,
+        notes=request.form.get('notes', '')
+    )
+    db.session.add(p)
+    db.session.flush()
+
+    total = 0
+    if category == 'חומרי גלם':
+        mat_ids = request.form.getlist('material_id[]')
+        quantities = request.form.getlist('item_quantity[]')
+        unit_prices = request.form.getlist('unit_price[]')
+        for mid, qty, up in zip(mat_ids, quantities, unit_prices):
+            if mid and qty:
+                qty_f = float(qty)
+                up_f = float(up) if up else 0
+                item = PurchaseItem(
+                    purchase_id=p.id,
+                    material_id=int(mid),
+                    quantity=qty_f,
+                    unit_price=up_f
+                )
+                db.session.add(item)
+                total += qty_f * up_f
+                material = RawMaterial.query.get(int(mid))
+                if material:
+                    material.quantity += qty_f
+    else:
+        desc = request.form.get('item_description', '')
+        amount = float(request.form.get('item_amount', 0))
+        item = PurchaseItem(
+            purchase_id=p.id,
+            description=desc,
+            quantity=1,
+            unit_price=amount
+        )
+        db.session.add(item)
+        total = amount
+
+    manual_total = request.form.get('manual_total', '')
+    p.total = float(manual_total) if manual_total else total
+    db.session.commit()
+    flash(f'קנייה נרשמה בהצלחה — ₪{p.total:.2f}', 'success')
+    return redirect(url_for('purchases'))
+
+@app.route('/purchases/delete/<int:id>', methods=['POST'])
+def delete_purchase(id):
+    p = Purchase.query.get_or_404(id)
+    if p.category == 'חומרי גלם':
+        for item in p.items:
+            if item.material_id:
+                mat = RawMaterial.query.get(item.material_id)
+                if mat:
+                    mat.quantity = max(0, mat.quantity - item.quantity)
+    db.session.delete(p)
+    db.session.commit()
+    flash('קנייה נמחקה (המלאי עודכן בהתאם)', 'warning')
+    return redirect(url_for('purchases'))
 
 
 if __name__ == '__main__':

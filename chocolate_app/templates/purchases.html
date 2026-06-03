@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}קניות{% endblock %}
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2 class="mb-0"><i class="bi bi-bag"></i> קניות</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
+        <i class="bi bi-plus-lg"></i> רשום קנייה
+    </button>
+</div>
+
+<!-- Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6">
+        <div class="card stat-card expense p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small mb-1">קניות החודש</div>
+                    <div class="fs-2 fw-bold text-danger">₪{{ "%.2f"|format(monthly_total) }}</div>
+                </div>
+                <i class="bi bi-calendar-month fs-1 text-danger opacity-50"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6">
+        <div class="card stat-card expense p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small mb-1">סה"כ כל הקניות</div>
+                    <div class="fs-2 fw-bold text-danger">₪{{ "%.2f"|format(total_all) }}</div>
+                </div>
+                <i class="bi bi-bag fs-1 text-danger opacity-50"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Purchases Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>תאריך</th>
+                    <th>ספק</th>
+                    <th>קטגוריה</th>
+                    <th>פירוט</th>
+                    <th>חשבונית</th>
+                    <th>סכום</th>
+                    <th class="text-center">פעולות</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for p in purchases %}
+            <tr>
+                <td>{{ p.purchase_date.strftime('%d/%m/%Y') }}</td>
+                <td class="fw-semibold">{{ p.supplier or '-' }}</td>
+                <td><span class="badge bg-secondary">{{ p.category }}</span></td>
+                <td>
+                    {% if p.category == 'חומרי גלם' %}
+                        {% for item in p.items %}
+                        <div class="small">
+                            {{ item.material.name if item.material else '?' }}
+                            — {{ item.quantity }} {{ item.material.unit if item.material else '' }}
+                            {% if item.unit_price %} × ₪{{ "%.2f"|format(item.unit_price) }}{% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        {% for item in p.items %}
+                        <div class="small">{{ item.description or '' }}</div>
+                        {% endfor %}
+                    {% endif %}
+                    {% if p.notes %}<div class="small text-muted">{{ p.notes }}</div>{% endif %}
+                </td>
+                <td>{{ p.invoice_number or '-' }}</td>
+                <td class="fw-bold text-danger">₪{{ "%.2f"|format(p.total) }}</td>
+                <td class="text-center">
+                    <form method="post" action="/purchases/delete/{{ p.id }}" class="d-inline"
+                          onsubmit="return confirm('למחוק קנייה זו?{% if p.category == \"חומרי גלם\" %} המלאי יתעדכן בהתאם!{% endif %}')">
+                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted py-5">אין קניות עדיין.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Purchase Modal -->
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <form method="post" action="/purchases/add" class="modal-content" id="purchaseForm">
+            <div class="modal-header">
+                <h5 class="modal-title">רישום קנייה</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Header fields -->
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">תאריך *</label>
+                        <input type="date" name="purchase_date" id="purchaseDate" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">ספק</label>
+                        <input type="text" name="supplier" class="form-control" placeholder="שם הספק">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">מספר חשבונית</label>
+                        <input type="text" name="invoice_number" class="form-control" placeholder="לא חובה">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">קטגוריה *</label>
+                    <select name="category" id="categorySelect" class="form-select" required onchange="toggleCategory(this.value)">
+                        <option value="">בחר קטגוריה...</option>
+                        <option value="חומרי גלם">חומרי גלם</option>
+                        <option value="ציוד">ציוד</option>
+                        <option value="אריזות">אריזות</option>
+                        <option value="שכירות">שכירות</option>
+                        <option value="שיווק">שיווק</option>
+                        <option value="משלוחים">משלוחים</option>
+                        <option value="שכר">שכר</option>
+                        <option value="אחר">אחר</option>
+                    </select>
+                </div>
+
+                <!-- Raw materials section -->
+                <div id="rawMaterialsSection" class="d-none">
+                    <label class="form-label fw-semibold">
+                        חומרי גלם שנרכשו
+                        <small class="text-success fw-normal">(המלאי יתעדכן אוטומטית)</small>
+                    </label>
+                    <div id="materialsContainer">
+                        <div class="row g-2 mb-2 material-row">
+                            <div class="col-5">
+                                <select name="material_id[]" class="form-select">
+                                    <option value="">בחר חומר גלם...</option>
+                                    {% for m in materials %}
+                                    <option value="{{ m.id }}">{{ m.name }} ({{ m.unit }}, יתרה: {{ m.quantity }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-3">
+                                <input type="number" name="item_quantity[]" class="form-control qty-input"
+                                       placeholder="כמות" step="0.001" min="0" oninput="calcTotal()">
+                            </div>
+                            <div class="col-3">
+                                <input type="number" name="unit_price[]" class="form-control price-input"
+                                       placeholder="מחיר ליחידה" step="0.01" min="0" oninput="calcTotal()">
+                            </div>
+                            <div class="col-1">
+                                <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeRow(this)">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm mb-3" onclick="addMaterialRow()">
+                        <i class="bi bi-plus"></i> הוסף שורה
+                    </button>
+                    <div class="alert alert-light border py-2">
+                        סה"כ מחושב: <strong id="calcTotalDisplay">₪0.00</strong>
+                        <span class="text-muted small me-2">— אפשר לשנות ידנית:</span>
+                        <input type="number" name="manual_total" id="manualTotal" class="form-control d-inline-block w-auto"
+                               step="0.01" min="0" placeholder="סכום ידני">
+                    </div>
+                </div>
+
+                <!-- General expense section -->
+                <div id="generalSection" class="d-none">
+                    <div class="row g-2">
+                        <div class="col-8">
+                            <label class="form-label fw-semibold">תיאור *</label>
+                            <input type="text" name="item_description" class="form-control" placeholder="תיאור ההוצאה">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-semibold">סכום (₪) *</label>
+                            <input type="number" name="item_amount" class="form-control" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label fw-semibold">הערות</label>
+                    <textarea name="notes" class="form-control" rows="2" placeholder="הערות נוספות..."></textarea>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="submit" class="btn btn-primary">שמור קנייה</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('purchaseDate').value = new Date().toISOString().split('T')[0];
+
+const materialRowTemplate = `
+<div class="row g-2 mb-2 material-row">
+    <div class="col-5">
+        <select name="material_id[]" class="form-select">
+            <option value="">בחר חומר גלם...</option>
+            {% for m in materials %}
+            <option value="{{ m.id }}">{{ m.name }} ({{ m.unit }}, יתרה: {{ m.quantity }})</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-3">
+        <input type="number" name="item_quantity[]" class="form-control qty-input"
+               placeholder="כמות" step="0.001" min="0" oninput="calcTotal()">
+    </div>
+    <div class="col-3">
+        <input type="number" name="unit_price[]" class="form-control price-input"
+               placeholder="מחיר ליחידה" step="0.01" min="0" oninput="calcTotal()">
+    </div>
+    <div class="col-1">
+        <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeRow(this)">
+            <i class="bi bi-x"></i>
+        </button>
+    </div>
+</div>`;
+
+function toggleCategory(val) {
+    document.getElementById('rawMaterialsSection').classList.toggle('d-none', val !== 'חומרי גלם');
+    document.getElementById('generalSection').classList.toggle('d-none', val === 'חומרי גלם' || val === '');
+}
+
+function addMaterialRow() {
+    document.getElementById('materialsContainer').insertAdjacentHTML('beforeend', materialRowTemplate);
+}
+
+function removeRow(btn) {
+    const rows = document.querySelectorAll('.material-row');
+    if (rows.length > 1) { btn.closest('.material-row').remove(); calcTotal(); }
+}
+
+function calcTotal() {
+    let total = 0;
+    const qtys = document.querySelectorAll('.qty-input');
+    const prices = document.querySelectorAll('.price-input');
+    qtys.forEach((q, i) => {
+        total += (parseFloat(q.value) || 0) * (parseFloat(prices[i]?.value) || 0);
+    });
+    document.getElementById('calcTotalDisplay').textContent = '₪' + total.toFixed(2);
+    const manual = document.getElementById('manualTotal');
+    if (!manual.value) manual.placeholder = total.toFixed(2);
+}
+</script>
+{% endblock %}

@@ -74,6 +74,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'purchases' %}active{% endif %}" href="/purchases">
+                        <i class="bi bi-bag"></i> קניות
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'finances' %}active{% endif %}" href="/finances">
                         <i class="bi bi-cash-stack"></i> כספים
                     </a>
