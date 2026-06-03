@@ -105,6 +105,15 @@ class Expense(db.Model):
     expense_date = db.Column(db.Date, default=date.today)
     notes = db.Column(db.Text)
 
+class Sale(db.Model):
+    __tablename__ = 'sales'
+    id = db.Column(db.Integer, primary_key=True)
+    sale_date = db.Column(db.Date, default=date.today, nullable=False)
+    description = db.Column(db.String(200), nullable=False)
+    channel = db.Column(db.String(50), default='ישיר')
+    amount = db.Column(db.Float, nullable=False)
+    notes = db.Column(db.Text)
+
 class Purchase(db.Model):
     __tablename__ = 'purchases'
     id = db.Column(db.Integer, primary_key=True)
@@ -507,6 +516,107 @@ def delete_expense(id):
     db.session.commit()
     flash('הוצאה נמחקה', 'warning')
     return redirect(url_for('finances'))
+
+
+# --- Sales ---
+
+@app.route('/sales')
+def sales():
+    all_sales = Sale.query.order_by(Sale.sale_date.desc()).all()
+    today = date.today()
+    month_start = today.replace(day=1)
+    monthly_total = db.session.query(func.sum(Sale.amount)).filter(
+        Sale.sale_date >= month_start
+    ).scalar() or 0
+    total_all = db.session.query(func.sum(Sale.amount)).scalar() or 0
+    return render_template('sales.html',
+        sales=all_sales,
+        monthly_total=monthly_total,
+        total_all=total_all
+    )
+
+@app.route('/sales/add', methods=['POST'])
+def add_sale():
+    s = Sale(
+        sale_date=datetime.strptime(request.form['sale_date'], '%Y-%m-%d').date(),
+        description=request.form['description'],
+        channel=request.form.get('channel', 'ישיר'),
+        amount=float(request.form['amount']),
+        notes=request.form.get('notes', '')
+    )
+    db.session.add(s)
+    db.session.commit()
+    flash(f'מכירה נרשמה — ₪{s.amount:.2f}', 'success')
+    return redirect(url_for('sales'))
+
+@app.route('/sales/delete/<int:id>', methods=['POST'])
+def delete_sale(id):
+    s = Sale.query.get_or_404(id)
+    db.session.delete(s)
+    db.session.commit()
+    flash('מכירה נמחקה', 'warning')
+    return redirect(url_for('sales'))
+
+
+# --- Balance ---
+
+@app.route('/balance')
+def balance():
+    from sqlalchemy import extract
+    # Build monthly data for the last 12 months
+    today = date.today()
+    months = []
+    for i in range(11, -1, -1):
+        m = today.month - i
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        months.append((y, m))
+
+    rows = []
+    for y, m in months:
+        sales_total = db.session.query(func.sum(Sale.amount)).filter(
+            extract('year', Sale.sale_date) == y,
+            extract('month', Sale.sale_date) == m
+        ).scalar() or 0
+
+        orders_total = db.session.query(
+            func.sum(OrderItem.quantity * OrderItem.price)
+        ).join(Order).filter(
+            extract('year', Order.order_date) == y,
+            extract('month', Order.order_date) == m,
+            Order.status != 'בוטל'
+        ).scalar() or 0
+
+        purchases_total = db.session.query(func.sum(Purchase.total)).filter(
+            extract('year', Purchase.purchase_date) == y,
+            extract('month', Purchase.purchase_date) == m
+        ).scalar() or 0
+
+        expenses_total = db.session.query(func.sum(Expense.amount)).filter(
+            extract('year', Expense.expense_date) == y,
+            extract('month', Expense.expense_date) == m
+        ).scalar() or 0
+
+        income = sales_total + orders_total
+        outgoing = purchases_total + expenses_total
+        rows.append({
+            'label': f'{m:02d}/{y}',
+            'income': income,
+            'outgoing': outgoing,
+            'balance': income - outgoing
+        })
+
+    total_income = sum(r['income'] for r in rows)
+    total_outgoing = sum(r['outgoing'] for r in rows)
+
+    return render_template('balance.html',
+        rows=rows,
+        total_income=total_income,
+        total_outgoing=total_outgoing,
+        total_balance=total_income - total_outgoing
+    )
 
 
 # --- Purchases ---

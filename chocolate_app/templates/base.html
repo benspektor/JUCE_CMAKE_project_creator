@@ -74,8 +74,18 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'sales' %}active{% endif %}" href="/sales">
+                        <i class="bi bi-graph-up-arrow"></i> מכירות
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'purchases' %}active{% endif %}" href="/purchases">
                         <i class="bi bi-bag"></i> קניות
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'balance' %}active{% endif %}" href="/balance">
+                        <i class="bi bi-bar-chart-line"></i> מאזן
                     </a>
                 </li>
                 <li class="nav-item">
