@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}קניות{% endblock %}
+{% block title %}הוצאות{% endblock %}
 {% block content %}
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2 class="mb-0"><i class="bi bi-bag"></i> קניות</h2>
+    <h2 class="mb-0"><i class="bi bi-bag"></i> הוצאות</h2>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
-        <i class="bi bi-plus-lg"></i> רשום קנייה
+        <i class="bi bi-plus-lg"></i> רשום הוצאה
     </button>
 </div>
 
@@ -15,7 +15,7 @@
         <div class="card stat-card expense p-3">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <div class="text-muted small mb-1">קניות החודש</div>
+                    <div class="text-muted small mb-1">הוצאות החודש</div>
                     <div class="fs-2 fw-bold text-danger">₪{{ "%.2f"|format(monthly_total) }}</div>
                 </div>
                 <i class="bi bi-calendar-month fs-1 text-danger opacity-50"></i>
@@ -26,7 +26,7 @@
         <div class="card stat-card expense p-3">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <div class="text-muted small mb-1">סה"כ כל הקניות</div>
+                    <div class="text-muted small mb-1">סה"כ כל ההוצאות</div>
                     <div class="fs-2 fw-bold text-danger">₪{{ "%.2f"|format(total_all) }}</div>
                 </div>
                 <i class="bi bi-bag fs-1 text-danger opacity-50"></i>
@@ -94,7 +94,7 @@
     <div class="modal-dialog modal-lg">
         <form method="post" action="/purchases/add" class="modal-content" id="purchaseForm">
             <div class="modal-header">
-                <h5 class="modal-title">רישום קנייה</h5>
+                <h5 class="modal-title">רישום הוצאה</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -194,7 +194,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
-                <button type="submit" class="btn btn-primary">שמור קנייה</button>
+                <button type="submit" class="btn btn-primary">שמור הוצאה</button>
             </div>
         </form>
     </div>

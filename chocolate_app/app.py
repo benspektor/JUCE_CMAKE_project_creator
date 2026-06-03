@@ -153,8 +153,8 @@ def dashboard():
     ).scalar() or 0
 
     monthly_expenses = db.session.query(
-        func.sum(Expense.amount)
-    ).filter(Expense.expense_date >= month_start).scalar() or 0
+        func.sum(Purchase.total)
+    ).filter(Purchase.purchase_date >= month_start).scalar() or 0
 
     low_stock = RawMaterial.query.filter(
         RawMaterial.min_quantity > 0,
@@ -455,69 +455,6 @@ def delete_recipe(id):
     return redirect(url_for('recipes'))
 
 
-# --- Finances ---
-
-@app.route('/finances')
-def finances():
-    all_expenses = Expense.query.order_by(Expense.expense_date.desc()).all()
-    today = date.today()
-    month_start = today.replace(day=1)
-
-    monthly_revenue = db.session.query(
-        func.sum(OrderItem.quantity * OrderItem.price)
-    ).join(Order).filter(
-        func.date(Order.order_date) >= month_start,
-        Order.status != 'בוטל'
-    ).scalar() or 0
-
-    monthly_expenses_total = db.session.query(
-        func.sum(Expense.amount)
-    ).filter(Expense.expense_date >= month_start).scalar() or 0
-
-    total_revenue = db.session.query(
-        func.sum(OrderItem.quantity * OrderItem.price)
-    ).join(Order).filter(Order.status != 'בוטל').scalar() or 0
-
-    total_expenses = db.session.query(func.sum(Expense.amount)).scalar() or 0
-
-    expense_categories = db.session.query(
-        Expense.category, func.sum(Expense.amount)
-    ).group_by(Expense.category).all()
-
-    return render_template('finances.html',
-        expenses=all_expenses,
-        monthly_revenue=monthly_revenue,
-        monthly_expenses=monthly_expenses_total,
-        monthly_profit=monthly_revenue - monthly_expenses_total,
-        total_revenue=total_revenue,
-        total_expenses=total_expenses,
-        total_profit=total_revenue - total_expenses,
-        expense_categories=expense_categories
-    )
-
-@app.route('/finances/add', methods=['POST'])
-def add_expense():
-    e = Expense(
-        description=request.form['description'],
-        amount=float(request.form['amount']),
-        category=request.form.get('category', 'אחר'),
-        expense_date=datetime.strptime(request.form['expense_date'], '%Y-%m-%d').date(),
-        notes=request.form.get('notes', '')
-    )
-    db.session.add(e)
-    db.session.commit()
-    flash('הוצאה נרשמה', 'success')
-    return redirect(url_for('finances'))
-
-@app.route('/finances/delete/<int:id>', methods=['POST'])
-def delete_expense(id):
-    e = Expense.query.get_or_404(id)
-    db.session.delete(e)
-    db.session.commit()
-    flash('הוצאה נמחקה', 'warning')
-    return redirect(url_for('finances'))
-
-
 # --- Sales ---
 
 @app.route('/sales')
@@ -594,13 +531,8 @@ def balance():
             extract('month', Purchase.purchase_date) == m
         ).scalar() or 0
 
-        expenses_total = db.session.query(func.sum(Expense.amount)).filter(
-            extract('year', Expense.expense_date) == y,
-            extract('month', Expense.expense_date) == m
-        ).scalar() or 0
-
         income = sales_total + orders_total
-        outgoing = purchases_total + expenses_total
+        outgoing = purchases_total
         rows.append({
             'label': f'{m:02d}/{y}',
             'income': income,
